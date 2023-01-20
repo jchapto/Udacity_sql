@@ -1,0 +1,67 @@
+/* Question 1: How many movies were rented for each children category (All time) ? /*
+
+
+WITH t1 AS
+(SELECT * FROM category c
+JOIN film_category fc ON c.category_id = fc.category_id
+JOIN film f ON fc.film_id = f.film_id
+JOIN inventory i ON i.inventory_id = f.film_id
+JOIN rental r ON r.inventory_id = i.inventory_id
+WHERE c.name = 'Animation' OR c.name = 'Children' OR c.name = 'Classics' OR c.name = 'Comedy'
+OR c.name = 'Family' OR c.name = 'Music')
+
+SELECT DISTINCT t1.name,
+COUNT(t1.rental_id) OVER (PARTITION BY t1.name)
+as movies_count FROM t1 ORDER BY t1.name;
+
+
+/* Question 2: How did each store performed in each month in terms of movie rentals (All time) ? /*
+
+WITH t1 AS(
+SELECT r.rental_id, store.store_id,
+DATE_TRUNC('month', r.rental_date) month_rental
+FROM rental r
+JOIN payment pay ON r.rental_id = pay.rental_id
+JOIN staff ON staff.staff_id = pay.staff_id
+JOIN store ON store.manager_staff_id = staff.staff_id
+	)
+
+SELECT t1.month_rental, t1.store_id,
+COUNT(t1.rental_id)
+AS Count_rentals_per_month FROM t1 GROUP BY 1,2 ORDER BY Count_rentals_per_month DESC;
+
+/* Question 3: Capture the customer name, month and year of payment and total payment amount for each month by the top 10 paying customers /*
+
+SELECT CONCAT(cu.first_name,'_', cu.last_name ) full_name,
+DATE_TRUNC('month',r.rental_date) rental_month,
+SUM(pa.amount) AS total_amount
+FROM customer cu
+JOIN rental r ON cu.customer_id = r.customer_id
+JOIN payment pa ON pa.rental_id = r.rental_id GROUP BY 1,2
+ORDER BY 3 DESC LIMIT 10;
+
+/* Question 4: Compare the payment amounts of the top paying customers in each successive month /*
+
+WITH t1 AS
+(SELECT CONCAT(cu.first_name,'_', cu.last_name ) full_name,
+DATE_TRUNC('month',r.rental_date) rental_month,
+SUM(pa.amount) AS total_amount
+FROM customer cu
+JOIN rental r ON cu.customer_id = r.customer_id
+JOIN payment pa ON pa.rental_id = r.rental_id GROUP BY 1,2
+HAVING
+CONCAT(cu.first_name,'_', cu.last_name ) = 'Eleanor_Hunt'
+OR CONCAT(cu.first_name,'_', cu.last_name ) = 'Gordon_Allard'
+OR CONCAT(cu.first_name,'_', cu.last_name ) = 'Arnold_Havens'
+OR CONCAT(cu.first_name,'_', cu.last_name ) = 'Rhonda_Kennedy'
+OR CONCAT(cu.first_name,'_', cu.last_name ) = 'Clara_Shaw'
+OR CONCAT(cu.first_name,'_', cu.last_name ) = 'Tommy_Collazo'
+OR CONCAT(cu.first_name,'_', cu.last_name ) = 'Marsha_Douglas'
+OR CONCAT(cu.first_name,'_', cu.last_name ) = 'Daisy_Bates'
+OR CONCAT(cu.first_name,'_', cu.last_name ) = 'Curtis_Irby'
+ORDER BY 1,2 DESC)
+
+SELECT t1.full_name, t1.rental_month, t1.total_amount,
+       t1.total_amount - LAG(t1.total_amount) OVER (PARTITION BY t1.full_name ORDER BY t1.full_name, t1.rental_month) AS amount_difference
+FROM t1
+;
